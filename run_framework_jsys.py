@@ -1,0 +1,79 @@
+import argparse
+
+from multiprocessing import Process
+from npbench.infrastructure import (Benchmark, generate_framework, LineCount,
+                                    Test, utilities as util)
+
+
+def run_benchmark(benchname, fname, preset, validate, repeat, timeout,
+                  ignore_errors, save_strict, load_strict):
+    frmwrk = generate_framework(fname, save_strict, load_strict)
+    numpy = generate_framework("numpy")
+    bench = Benchmark(benchname)
+    lcount = LineCount(bench, frmwrk, numpy)
+    lcount.count()
+    test = Test(bench, frmwrk, numpy)
+    test.run(preset, validate, repeat, timeout, ignore_errors)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f",
+                        "--framework",
+                        type=str,
+                        nargs="?",
+                        default="numpy")
+    parser.add_argument("-p",
+                        "--preset",
+                        choices=['S', 'M', 'L', 'paper'],
+                        nargs="?",
+                        default='S')
+    parser.add_argument("-m", "--mode", type=str, nargs="?", default="main")
+    parser.add_argument("-v",
+                        "--validate",
+                        type=util.str2bool,
+                        nargs="?",
+                        default=True)
+    parser.add_argument("-r", "--repeat", type=int, nargs="?", default=10)
+    parser.add_argument("-t",
+                        "--timeout",
+                        type=float,
+                        nargs="?",
+                        default=200.0)
+    parser.add_argument("--ignore-errors",
+                        type=util.str2bool,
+                        nargs="?",
+                        default=True)
+    parser.add_argument("-s",
+                        "--save-strict-sdfg",
+                        type=util.str2bool,
+                        nargs="?",
+                        default=False)
+    parser.add_argument("-l",
+                        "--load-strict-sdfg",
+                        type=util.str2bool,
+                        nargs="?",
+                        default=False)
+    args = vars(parser.parse_args())
+
+    benchnames = ['adi', 'jacobi_1d', 'jacobi_2d', 'fdtd_2d', 'bicg', 'cavity_flow', 'cholesky','cholesky2', 'nbody',
+                  'channel_flow', 'covariance' ,'covariance2', 'gemm', 'conv2d_bias', 'softmax', 'k2mm', 'atax',
+                  'crc16', 'mandelbrot1', 'seidel_2d', 'hdiff', 'vadv','heat_3d','scattering_self_energies',
+                  'contour_integral','stockham_fft' ,'trisolv','lu']
+    failed = []
+    for benchname in benchnames:
+        p = Process(target=run_benchmark,
+                    args=(benchname, args["framework"], args["preset"],
+                          args["validate"], args["repeat"], args["timeout"],
+                          args["ignore_errors"], args["save_strict_sdfg"],
+                          args["load_strict_sdfg"]))
+        p.start()
+        p.join()
+        exit_code = p.exitcode
+        if exit_code != 0:
+            failed.append(benchname)
+
+    if len(failed) != 0:
+        print(f"Failed: {len(failed)} out of {len(benchnames)}")
+        for bench in failed:
+            print(bench)
