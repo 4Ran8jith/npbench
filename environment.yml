@@ -9,9 +9,9 @@ dependencies:
   - pandas
   - scipy
   - dpnp
-  - dace
   - numba
-  - pythran
-  - cupy
-  # pygount has to be installed via pip
+  - pip
+  - setuptools<=81
+  - pip:
+    - pygount
 
